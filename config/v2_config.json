@@ -1,0 +1,83 @@
+{
+  "project": "AlphaLyceumV2",
+  "mode": "insight",
+  "symbols": ["BTCUSD.vx", "XAUUSD.vx"],
+  "timeframes": ["M5", "M15", "H1", "H4"],
+  "telegram": {
+    "channel": "@ALPHALYCEUM77",
+    "bot_token": "8501675993:AAFhwBucWUAu5DT85xWIxk0wZJVKk3yVtno",
+    "enabled": true,
+    "auto_detail_followup": false
+  },
+  "sources": {
+    "tradingview": {
+      "enabled": true,
+      "provider": "chart_url_map",
+      "chart_urls": {
+        "BTCUSD.vx": "https://id.tradingview.com/chart/?symbol=BINANCE%3ABTCUSD",
+        "XAUUSD.vx": "https://id.tradingview.com/chart/?symbol=OANDA%3AXAUUSD"
+      }
+    },
+    "news": {
+      "enabled": true,
+      "provider": "yahoo_finance",
+      "lookback_hours": 24,
+      "timeout_sec": 20,
+      "publisher_blacklist": [
+        "Simply Wall St.",
+        "The Motley Fool"
+      ],
+      "exclude_keywords": [
+        "price target",
+        "analyst upgrades",
+        "quarterly earnings"
+      ]
+    },
+    "forexfactory": {
+      "enabled": true,
+      "look_ahead_hours": 6,
+      "currencies": ["USD", "EUR", "GBP", "JPY"],
+      "impact_levels": ["high"]
+    }
+  },
+  "publish_policy": {
+    "min_interval_hours": 3,
+    "require_session_window": true,
+    "min_quality_score": 75,
+    "forbid_neutral_bias": true,
+    "pair_cooldown_hours": {
+      "BTCUSD.vx": 3,
+      "XAUUSD.vx": 3
+    },
+    "publish_only_status": ["OK"]
+  },
+  "render": {
+    "mode": "ohlc"
+  },
+  "analysis": {
+    "engine": "ollama",
+    "ollama_model": "deepseek-r1:14b",
+    "ollama_fallback_model": "llama3.2:3b",
+    "temperature": 0.2,
+    "bias_weights": {
+      "price_structure": 0.4,
+      "momentum": 0.25,
+      "event_risk": 0.35
+    },
+    "openai_oauth": {
+      "enabled": true,
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-5-codex",
+      "temperature": 0.2,
+      "max_tokens": 900,
+      "timeout_sec": 45,
+      "credentials_file": "D:/alphalyceum/v2/config/oauth_project.json",
+      "access_token_env": "OPENAI_OAUTH_ACCESS_TOKEN",
+      "refresh_token_env": "OPENAI_OAUTH_REFRESH_TOKEN",
+      "token_url": "https://auth.openai.com/oauth/token",
+      "client_id": "app_EMoamEEZ73f0CkXaXp7hrann",
+      "client_secret_env": "OPENAI_OAUTH_CLIENT_SECRET",
+      "scope": "openid profile email offline_access"
+    }
+  }
+}

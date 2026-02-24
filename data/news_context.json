@@ -1,0 +1,20 @@
+{
+  "BTCUSD.vx": {
+    "bias": "neutral",
+    "risk_level": "high",
+    "headlines": [
+      "US macro release may increase volatility",
+      "ETF flow mixed in last 24h"
+    ],
+    "note": "Volatility event window approaching"
+  },
+  "XAUUSD.vx": {
+    "bias": "bullish",
+    "risk_level": "medium",
+    "headlines": [
+      "Rate cut expectations support gold",
+      "Dollar index softens intraday"
+    ],
+    "note": "Macro backdrop slightly supportive"
+  }
+}

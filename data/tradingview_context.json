@@ -1,0 +1,28 @@
+{
+  "BTCUSD.vx": {
+    "timeframe": "H1",
+    "bias": "bullish",
+    "structure": "higher-high/higher-low",
+    "note": "Breakout di atas area range, momentum masih mendukung.",
+    "chart_url": "https://id.tradingview.com/chart/?symbol=BINANCE%3ABTCUSD",
+    "price_action": {
+      "market_phase": "uptrend pullback sehat",
+      "candle_signal": "bullish continuation setelah retest area breakout",
+      "momentum_note": "buyer masih dominan selama low terakhir tidak ditembus",
+      "invalidation": "jika close H1 kuat di bawah support mayor"
+    }
+  },
+  "XAUUSD.vx": {
+    "timeframe": "H1",
+    "bias": "bearish",
+    "structure": "lower-high/lower-low",
+    "note": "Masih ada tekanan turun selama belum reclaim resistance kunci.",
+    "chart_url": "https://id.tradingview.com/chart/?symbol=OANDA%3AXAUUSD",
+    "price_action": {
+      "market_phase": "downtrend dengan pullback lemah",
+      "candle_signal": "bearish rejection di area resistance intraday",
+      "momentum_note": "tekanan jual masih konsisten pada lower high",
+      "invalidation": "jika close H1 menembus resistance kunci"
+    }
+  }
+}

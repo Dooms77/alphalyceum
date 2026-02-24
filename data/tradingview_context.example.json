@@ -1,0 +1,16 @@
+{
+  "BTCUSD.vx": {
+    "timeframe": "H1",
+    "bias": "bullish",
+    "structure": "higher-high/higher-low",
+    "note": "Breakout di atas range sebelumnya dengan konfirmasi momentum.",
+    "chart_image_url": "https://example.com/btc_chart.png"
+  },
+  "XAUUSD.vx": {
+    "timeframe": "H1",
+    "bias": "bearish",
+    "structure": "lower-high/lower-low",
+    "note": "Harga ditolak di resistance, risiko lanjut turun masih ada.",
+    "chart_image_url": "https://example.com/xau_chart.png"
+  }
+}
