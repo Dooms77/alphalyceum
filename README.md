@@ -46,6 +46,16 @@ cd D:\alphalyceum\v2\python
 ```
 Output report: `data/decision_report_24h.txt`
 
+### Content Automation (daily outputs)
+```powershell
+cd D:\alphalyceum\v2\python
+./run_content_automation.ps1
+```
+Generated files (local, not committed):
+- `content_out/daily_market_brief.txt`
+- `content_out/signal_recap_24h.txt`
+- `content_out/short_script_tiktok.txt`
+
 ### V1 (legacy/stable signal pipeline)
 Lihat dokumentasi detail di:
 - `phase1/README.md`

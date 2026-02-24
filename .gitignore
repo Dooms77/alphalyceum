@@ -19,6 +19,7 @@ venv/
 /data/decision_log.jsonl
 /data/decision_report_24h.txt
 /data/v2_state.json
+/content_out/
 
 # secrets
 /config/oauth_project.json
