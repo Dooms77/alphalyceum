@@ -5,11 +5,11 @@
   "timeframes": ["M5", "M15", "H1", "H4"],
   "telegram": {
     "channel": "@ALPHALYCEUM77",
-    "ops_channel": "",
+    "ops_channel": "-1003785604488",
     "bot_token": "8501675993:AAFhwBucWUAu5DT85xWIxk0wZJVKk3yVtno",
     "enabled": true,
     "auto_detail_followup": false,
-    "publish_non_ok_to_ops": false
+    "publish_non_ok_to_ops": true
   },
   "sources": {
     "tradingview": {
