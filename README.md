@@ -56,6 +56,13 @@ Generated files (local, not committed):
 - `content_out/signal_recap_24h.txt`
 - `content_out/short_script_tiktok.txt`
 
+### Content Ops Bot Pipeline (database-driven)
+```powershell
+cd D:\alphalyceum\v2\python
+./run_content_ops_pipeline.ps1
+```
+Docs: `content_ops/README.md`
+
 ### V1 (legacy/stable signal pipeline)
 Lihat dokumentasi detail di:
 - `phase1/README.md`
