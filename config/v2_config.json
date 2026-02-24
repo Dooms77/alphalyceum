@@ -9,7 +9,7 @@
     "bot_token": "8501675993:AAFhwBucWUAu5DT85xWIxk0wZJVKk3yVtno",
     "enabled": true,
     "auto_detail_followup": false,
-    "publish_non_ok_to_ops": true
+    "publish_non_ok_to_ops": false
   },
   "sources": {
     "tradingview": {
@@ -62,7 +62,7 @@
       "pair_cooldown_hours": { "BTCUSD.vx": 4, "XAUUSD.vx": 4 }
     },
     "balanced": {
-      "min_quality_score": 75,
+      "min_quality_score": 69,
       "pair_cooldown_hours": { "BTCUSD.vx": 3, "XAUUSD.vx": 3 }
     },
     "aggressive": {
