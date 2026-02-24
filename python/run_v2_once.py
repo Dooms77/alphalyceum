@@ -176,10 +176,16 @@ def _enforce_pair_specific(payload: dict):
 
 
 def _event_hits_symbol(symbol: str, event: dict) -> bool:
-    cur = str((event or {}).get("currency", "")).upper()
+    cur = str((event or {}).get("currency", "")).upper().strip()
+    title = str((event or {}).get("title", "")).upper()
     sym = str(symbol).upper()
+
+    # Fallback when FF currency field kosong/"-": infer by title keywords
+    usd_major_keywords = ["CPI", "NFP", "FOMC", "FED", "PCE", "NON-FARM", "POWELL", "CONSUMER CONFIDENCE"]
+    inferred_usd = any(k in title for k in usd_major_keywords)
+
     # BTCUSD & XAUUSD both sensitive to USD macro
-    if cur == "USD" and ("BTC" in sym or "XAU" in sym):
+    if (cur == "USD" or inferred_usd) and ("BTC" in sym or "XAU" in sym):
         return True
     if cur == "XAU" and "XAU" in sym:
         return True
@@ -238,6 +244,20 @@ def _symbol_news_block(symbol: str, ff_events: dict, cfg: dict, now_utc: dt.date
 def _compute_status(payload: dict, quality: int, cfg: dict, news_blocked: bool, news_reason: str) -> tuple[str, str]:
     min_quality = int(((cfg.get("publish_policy") or {}).get("min_quality_score", 75)))
     bias = str(payload.get("bias", "neutral")).lower()
+    symbol = str(payload.get("symbol", "")).upper()
+
+    # XAU rescue rule: if bias neutral but setup quality cukup, treat as mixed (watchlist-ready)
+    if "XAU" in symbol and bias == "neutral":
+        plan = payload.get("plan", {}) if isinstance(payload.get("plan"), dict) else {}
+        conv = int(plan.get("conviction", 0) or 0)
+        setup_ready = all([
+            not _is_placeholder(plan.get("entry_zone", "")),
+            not _is_placeholder(plan.get("tp_zone", "")),
+            not _is_placeholder(plan.get("sl_zone", "")),
+        ])
+        if conv >= 60 and setup_ready and quality >= max(65, min_quality - 4):
+            bias = "mixed"
+            payload["bias"] = "mixed"
 
     if news_blocked:
         return "HOLD_NEWS", news_reason
@@ -494,19 +514,43 @@ def main():
 
                 if allow_publish:
                     image_url = (payload.get("tradingview", {}) or {}).get("chart_image_url")
-                    send_telegram(token, chat_id, m, image_url=image_url, image_path=image_path, send_detail_followup=send_detail)
-                    pair_state[payload.get("symbol")] = now_utc.isoformat()
-                    sent_any = True
+                    try:
+                        send_telegram(token, chat_id, m, image_url=image_url, image_path=image_path, send_detail_followup=send_detail)
+                        pair_state[payload.get("symbol")] = now_utc.isoformat()
+                        sent_any = True
+                    except Exception as e:
+                        diagnostics.append({
+                            "symbol": payload.get("symbol"),
+                            "status": status,
+                            "publish": False,
+                            "publish_reason": f"telegram_main_send_fail: {e}",
+                        })
                     continue
 
                 if send_non_ok_ops and ops_chat_id and status in {"HOLD_NEWS", "NO-TRADE"}:
                     ops_msg = f"[OPS] {payload.get('symbol')} | {status} | {payload.get('reason')} | score={payload.get('quality_score')}"
-                    send_telegram(token, ops_chat_id, ops_msg, image_url=None, image_path=None, send_detail_followup=False)
+                    try:
+                        send_telegram(token, ops_chat_id, ops_msg, image_url=None, image_path=None, send_detail_followup=False)
+                    except Exception as e:
+                        diagnostics.append({
+                            "symbol": payload.get("symbol"),
+                            "status": status,
+                            "publish": False,
+                            "publish_reason": f"telegram_ops_send_fail: {e}",
+                        })
 
             if ops_chat_id:
                 for a in health_alerts:
                     hmsg = f"[HEALTH] {a['symbol']} no OK >= {a['since_ok_hours']}h | last={a['status']} | {a['reason']}"
-                    send_telegram(token, ops_chat_id, hmsg, image_url=None, image_path=None, send_detail_followup=False)
+                    try:
+                        send_telegram(token, ops_chat_id, hmsg, image_url=None, image_path=None, send_detail_followup=False)
+                    except Exception as e:
+                        diagnostics.append({
+                            "symbol": a.get("symbol"),
+                            "status": "HEALTH",
+                            "publish": False,
+                            "publish_reason": f"telegram_health_send_fail: {e}",
+                        })
 
             if sent_any:
                 state["last_sent_at"] = now_utc.isoformat()
