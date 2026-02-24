@@ -17,6 +17,7 @@ from providers.ohlc_renderer import render_ohlc_with_zones
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "v2_config.json"
 CHART_DIR = Path(__file__).resolve().parents[1] / "data" / "charts"
 STATE_PATH = Path(__file__).resolve().parents[1] / "data" / "v2_state.json"
+DECISION_LOG_PATH = Path(__file__).resolve().parents[1] / "data" / "decision_log.jsonl"
 
 
 def load_config():
@@ -96,31 +97,56 @@ def _hours_since_pair_last_sent(state: dict, symbol: str, now_utc: dt.datetime) 
 
 
 def _pair_quality(payload: dict) -> int:
-    score = 0
-    bias = str(payload.get("bias", "neutral")).lower()
     plan = payload.get("plan", {}) if isinstance(payload.get("plan"), dict) else {}
     pa = plan.get("price_action", {}) if isinstance(plan.get("price_action"), dict) else {}
+    news = payload.get("news", {}) if isinstance(payload.get("news"), dict) else {}
+
+    score = 0
+    bias = str(payload.get("bias", "neutral")).lower()
     conv = int(plan.get("conviction", 0) or 0)
 
+    # 1) Bias quality (max 20)
     if bias in {"bullish", "bearish"}:
         score += 20
     elif bias == "mixed":
-        score += 8
-
-    if conv >= 60:
-        score += 20
-    elif conv >= 50:
         score += 10
 
+    # 2) Conviction quality (max 20)
+    if conv >= 70:
+        score += 20
+    elif conv >= 60:
+        score += 15
+    elif conv >= 50:
+        score += 10
+    elif conv >= 40:
+        score += 6
+
+    # 3) Setup completeness (max 20)
+    for k in ["entry_zone", "tp_zone", "sl_zone", "resistance", "support"]:
+        if not _is_placeholder(plan.get(k, "")):
+            score += 4
+
+    # 4) Momentum/context signal (max 25)
     text = " ".join([
         str(pa.get("candle_signal", "")),
         str(pa.get("momentum_note", "")),
         str(plan.get("scenario", "")),
+        str(payload.get("tradingview", {}).get("note", "")),
     ]).lower()
-    for kw in ["break", "breakout", "momentum", "trend", "continuation", "rejection"]:
+    for kw in ["break", "breakout", "momentum", "trend", "continuation", "rejection", "support", "resistance"]:
         if kw in text:
-            score += 5
-    return min(score, 100)
+            score += 3
+
+    # 5) News risk penalty/bonus (max 15)
+    risk = str(news.get("risk_level", "medium")).lower()
+    if risk == "low":
+        score += 15
+    elif risk == "medium":
+        score += 10
+    else:
+        score += 4
+
+    return max(0, min(score, 100))
 
 
 def _enforce_pair_specific(payload: dict):
@@ -159,16 +185,52 @@ def _event_hits_symbol(symbol: str, event: dict) -> bool:
     return False
 
 
-def _symbol_news_block(symbol: str, ff_events: dict, cfg: dict) -> tuple[bool, str]:
-    evs = (ff_events or {}).get("events") or []
-    hits = [e for e in evs if _event_hits_symbol(symbol, e)]
-    if not hits:
-        return False, "NO_BLOCK"
+def _is_major_event(title: str, major_events: list[str]) -> bool:
+    t = str(title or "").upper()
+    return any(str(x).upper() in t for x in (major_events or []))
 
-    impact = str(hits[0].get("impact", "")).lower()
-    if impact == "high":
-        title = str(hits[0].get("title", "macro event"))
-        return True, f"HOLD_NEWS: {title}"
+
+def _parse_event_time_utc(event: dict) -> dt.datetime | None:
+    raw = event.get("time_utc")
+    if not raw:
+        return None
+    try:
+        return dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00")).astimezone(dt.timezone.utc)
+    except Exception:
+        return None
+
+
+def _symbol_news_block(symbol: str, ff_events: dict, cfg: dict, now_utc: dt.datetime) -> tuple[bool, str]:
+    evs = (ff_events or {}).get("events") or []
+    ff_cfg = (((cfg or {}).get("sources") or {}).get("forexfactory") or {})
+
+    default_win = ff_cfg.get("default_block_window_minutes") or {"before": 45, "after": 45}
+    major_win = ff_cfg.get("major_block_window_minutes") or {"before": 90, "after": 90}
+    major_events = ff_cfg.get("major_events") or ["CPI", "NFP", "FOMC"]
+
+    for e in evs:
+        if not _event_hits_symbol(symbol, e):
+            continue
+        if str(e.get("impact", "")).lower() != "high":
+            continue
+
+        title = str(e.get("title", "macro event"))
+        et = _parse_event_time_utc(e)
+        if not et:
+            continue
+
+        use_major = _is_major_event(title, major_events)
+        win = major_win if use_major else default_win
+        before_m = int(win.get("before", 45))
+        after_m = int(win.get("after", 45))
+
+        start = et - dt.timedelta(minutes=before_m)
+        end = et + dt.timedelta(minutes=after_m)
+
+        if start <= now_utc <= end:
+            tag = "MAJOR" if use_major else "HIGH"
+            return True, f"HOLD_NEWS[{tag}] {title} ({before_m}/{after_m}m)"
+
     return False, "NO_BLOCK"
 
 
@@ -204,6 +266,15 @@ def _allow_publish_for_symbol(symbol: str, status: str, state: dict, now_utc: dt
     return True, "publish_allowed"
 
 
+def _append_decision_log(rows: list[dict]):
+    if not rows:
+        return
+    DECISION_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with DECISION_LOG_PATH.open("a", encoding="utf-8") as f:
+        for row in rows:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--detail", action="store_true", help="Kirim detail lengkap sebagai follow-up text")
@@ -217,6 +288,7 @@ def main():
     symbols = cfg.get("symbols", ["BTCUSD.vx", "XAUUSD.vx"])
     out_msgs = []
     diagnostics = []
+    decision_rows = []
 
     ff_cfg = (((cfg or {}).get("sources") or {}).get("forexfactory") or {})
     ff_events = get_upcoming_events(
@@ -289,7 +361,7 @@ def main():
                     n["risk_level"] = "high"
 
         quality = _pair_quality(payload)
-        blocked, block_reason = _symbol_news_block(s, ff_events, cfg)
+        blocked, block_reason = _symbol_news_block(s, ff_events, cfg, now_utc)
         status, reason = _compute_status(payload, quality, cfg, blocked, block_reason)
 
         payload["status"] = status
@@ -324,22 +396,37 @@ def main():
             allow_publish = True
             publish_reason = "force-send"
 
-        diagnostics.append(
-            {
-                "symbol": s,
-                "status": status,
-                "reason": reason,
-                "quality": quality,
-                "publish": allow_publish,
-                "publish_reason": publish_reason,
-            }
-        )
+        diag_row = {
+            "symbol": s,
+            "status": status,
+            "reason": reason,
+            "quality": quality,
+            "publish": allow_publish,
+            "publish_reason": publish_reason,
+        }
+        diagnostics.append(diag_row)
+
+        decision_rows.append({
+            "ts_utc": now_utc.isoformat(),
+            "symbol": s,
+            "status": status,
+            "reason": reason,
+            "quality_score": quality,
+            "bias": payload.get("bias"),
+            "entry_zone": payload.get("plan", {}).get("entry_zone"),
+            "tp_zone": payload.get("plan", {}).get("tp_zone"),
+            "sl_zone": payload.get("plan", {}).get("sl_zone"),
+            "publish": allow_publish,
+            "publish_reason": publish_reason,
+        })
 
         out_msgs.append((msg, payload, image_path, allow_publish))
 
     if cfg.get("telegram", {}).get("enabled"):
         token = cfg["telegram"].get("bot_token", "")
         chat_id = cfg["telegram"].get("channel", "")
+        ops_chat_id = cfg["telegram"].get("ops_channel", "")
+        send_non_ok_ops = bool(cfg.get("telegram", {}).get("publish_non_ok_to_ops", False))
         auto_detail = bool(cfg.get("telegram", {}).get("auto_detail_followup", False))
         send_detail = bool(args.detail or auto_detail)
 
@@ -347,16 +434,24 @@ def main():
             pair_state = state.setdefault("pair_last_sent_at", {})
             sent_any = False
             for m, payload, image_path, allow_publish in out_msgs:
-                if not allow_publish:
+                status = str(payload.get("status", "NO-TRADE")).upper()
+
+                if allow_publish:
+                    image_url = (payload.get("tradingview", {}) or {}).get("chart_image_url")
+                    send_telegram(token, chat_id, m, image_url=image_url, image_path=image_path, send_detail_followup=send_detail)
+                    pair_state[payload.get("symbol")] = now_utc.isoformat()
+                    sent_any = True
                     continue
-                image_url = (payload.get("tradingview", {}) or {}).get("chart_image_url")
-                send_telegram(token, chat_id, m, image_url=image_url, image_path=image_path, send_detail_followup=send_detail)
-                pair_state[payload.get("symbol")] = now_utc.isoformat()
-                sent_any = True
+
+                if send_non_ok_ops and ops_chat_id and status in {"HOLD_NEWS", "NO-TRADE"}:
+                    ops_msg = f"[OPS] {payload.get('symbol')} | {status} | {payload.get('reason')} | score={payload.get('quality_score')}"
+                    send_telegram(token, ops_chat_id, ops_msg, image_url=None, image_path=None, send_detail_followup=False)
 
             if sent_any:
                 state["last_sent_at"] = now_utc.isoformat()
                 _save_state(state)
+
+    _append_decision_log(decision_rows)
 
     print("V2_POLICY", json.dumps(diagnostics, ensure_ascii=False))
     print("\n\n".join([m for m, _, _, _ in out_msgs]))

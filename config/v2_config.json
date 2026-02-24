@@ -5,9 +5,11 @@
   "timeframes": ["M5", "M15", "H1", "H4"],
   "telegram": {
     "channel": "@ALPHALYCEUM77",
+    "ops_channel": "",
     "bot_token": "8501675993:AAFhwBucWUAu5DT85xWIxk0wZJVKk3yVtno",
     "enabled": true,
-    "auto_detail_followup": false
+    "auto_detail_followup": false,
+    "publish_non_ok_to_ops": false
   },
   "sources": {
     "tradingview": {
@@ -37,7 +39,10 @@
       "enabled": true,
       "look_ahead_hours": 6,
       "currencies": ["USD", "EUR", "GBP", "JPY"],
-      "impact_levels": ["high"]
+      "impact_levels": ["high"],
+      "default_block_window_minutes": { "before": 45, "after": 45 },
+      "major_events": ["CPI", "NFP", "FOMC"],
+      "major_block_window_minutes": { "before": 90, "after": 90 }
     }
   },
   "publish_policy": {

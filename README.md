@@ -22,6 +22,8 @@ Fokus analisa insight berkualitas dengan gate ketat:
 - policy status: `OK / HOLD_NEWS / NO-TRADE`
 - pair cooldown 3 jam
 - quality gate min score 75
+- news-gate ForexFactory: default `-45/+45`, major event (CPI/NFP/FOMC) `-90/+90`
+- audit trail keputusan per cycle di `data/decision_log.jsonl`
 - formatter output Telegram yang terstruktur
 
 ## Quick Start

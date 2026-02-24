@@ -16,6 +16,7 @@ venv/
 /data/*.jpeg
 /data/*.webp
 /data/*.gif
+/data/decision_log.jsonl
 
 # secrets
 /config/oauth_project.json
