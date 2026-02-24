@@ -56,6 +56,25 @@
     },
     "publish_only_status": ["OK"]
   },
+  "profiles": {
+    "strict": {
+      "min_quality_score": 80,
+      "pair_cooldown_hours": { "BTCUSD.vx": 4, "XAUUSD.vx": 4 }
+    },
+    "balanced": {
+      "min_quality_score": 75,
+      "pair_cooldown_hours": { "BTCUSD.vx": 3, "XAUUSD.vx": 3 }
+    },
+    "aggressive": {
+      "min_quality_score": 68,
+      "pair_cooldown_hours": { "BTCUSD.vx": 2, "XAUUSD.vx": 2 }
+    }
+  },
+  "health_guard": {
+    "enabled": true,
+    "no_ok_hours_alert": 12,
+    "alert_cooldown_hours": 6
+  },
   "render": {
     "mode": "ohlc"
   },

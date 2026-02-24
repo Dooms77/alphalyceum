@@ -27,13 +27,14 @@ def load_config():
 
 def _load_state():
     if not STATE_PATH.exists():
-        return {"last_sent_at": None, "pair_last_sent_at": {}}
+        return {"last_sent_at": None, "pair_last_sent_at": {}, "health_last_alert_at": {}}
     try:
         state = json.loads(STATE_PATH.read_text(encoding="utf-8"))
         state.setdefault("pair_last_sent_at", {})
+        state.setdefault("health_last_alert_at", {})
         return state
     except Exception:
-        return {"last_sent_at": None, "pair_last_sent_at": {}}
+        return {"last_sent_at": None, "pair_last_sent_at": {}, "health_last_alert_at": {}}
 
 
 def _save_state(state: dict):
@@ -275,13 +276,66 @@ def _append_decision_log(rows: list[dict]):
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
+def _apply_profile_overrides(cfg: dict, profile_name: str):
+    profiles = cfg.get("profiles") or {}
+    prof = profiles.get(profile_name) or {}
+    if not prof:
+        return
+    policy = cfg.setdefault("publish_policy", {})
+    if "min_quality_score" in prof:
+        policy["min_quality_score"] = int(prof["min_quality_score"])
+    if "pair_cooldown_hours" in prof and isinstance(prof["pair_cooldown_hours"], dict):
+        policy["pair_cooldown_hours"] = prof["pair_cooldown_hours"]
+
+
+def _hours_since(ts: str | None, now_utc: dt.datetime) -> float:
+    if not ts:
+        return 1e9
+    try:
+        t = dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00")).astimezone(dt.timezone.utc)
+        return (now_utc - t).total_seconds() / 3600.0
+    except Exception:
+        return 1e9
+
+
+def _health_guard_alerts(cfg: dict, state: dict, now_utc: dt.datetime, diagnostics: list[dict]) -> list[dict]:
+    hg = cfg.get("health_guard") or {}
+    if not bool(hg.get("enabled", False)):
+        return []
+
+    no_ok_hours = float(hg.get("no_ok_hours_alert", 12))
+    alert_cd_hours = float(hg.get("alert_cooldown_hours", 6))
+
+    out = []
+    last_alert = state.setdefault("health_last_alert_at", {})
+    for d in diagnostics:
+        sym = d.get("symbol")
+        status = str(d.get("status", "")).upper()
+        if status == "OK":
+            continue
+
+        since_ok = _hours_since((state.get("pair_last_sent_at") or {}).get(sym), now_utc)
+        since_alert = _hours_since(last_alert.get(sym), now_utc)
+        if since_ok >= no_ok_hours and since_alert >= alert_cd_hours:
+            out.append({
+                "symbol": sym,
+                "since_ok_hours": round(since_ok, 2),
+                "status": status,
+                "reason": d.get("reason"),
+            })
+            last_alert[sym] = now_utc.isoformat()
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--detail", action="store_true", help="Kirim detail lengkap sebagai follow-up text")
     ap.add_argument("--force-send", action="store_true", help="Bypass publish policy")
+    ap.add_argument("--profile", default="balanced", choices=["strict", "balanced", "aggressive"], help="Profil publish policy")
     args = ap.parse_args()
 
     cfg = load_config()
+    _apply_profile_overrides(cfg, args.profile)
     state = _load_state()
     now_utc = dt.datetime.now(dt.timezone.utc)
 
@@ -422,6 +476,8 @@ def main():
 
         out_msgs.append((msg, payload, image_path, allow_publish))
 
+    health_alerts = _health_guard_alerts(cfg, state, now_utc, diagnostics)
+
     if cfg.get("telegram", {}).get("enabled"):
         token = cfg["telegram"].get("bot_token", "")
         chat_id = cfg["telegram"].get("channel", "")
@@ -447,9 +503,15 @@ def main():
                     ops_msg = f"[OPS] {payload.get('symbol')} | {status} | {payload.get('reason')} | score={payload.get('quality_score')}"
                     send_telegram(token, ops_chat_id, ops_msg, image_url=None, image_path=None, send_detail_followup=False)
 
+            if ops_chat_id:
+                for a in health_alerts:
+                    hmsg = f"[HEALTH] {a['symbol']} no OK >= {a['since_ok_hours']}h | last={a['status']} | {a['reason']}"
+                    send_telegram(token, ops_chat_id, hmsg, image_url=None, image_path=None, send_detail_followup=False)
+
             if sent_any:
                 state["last_sent_at"] = now_utc.isoformat()
-                _save_state(state)
+
+            _save_state(state)
 
     _append_decision_log(decision_rows)
 

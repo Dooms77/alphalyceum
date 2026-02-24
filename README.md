@@ -31,8 +31,20 @@ Fokus analisa insight berkualitas dengan gate ketat:
 ### V2 (current main runner)
 ```powershell
 cd D:\alphalyceum\v2\python
-python run_v2_once.py
+python run_v2_once.py --profile balanced
 ```
+
+Profile options:
+- `strict` (lebih selektif)
+- `balanced` (default)
+- `aggressive` (lebih cepat publish)
+
+### Decision Report (24h)
+```powershell
+cd D:\alphalyceum\v2\python
+./run_decision_report.ps1
+```
+Output report: `data/decision_report_24h.txt`
 
 ### V1 (legacy/stable signal pipeline)
 Lihat dokumentasi detail di:
