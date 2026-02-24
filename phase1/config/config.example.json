@@ -1,0 +1,12 @@
+{
+  "signal_file": "C:/Users/AORUS/AppData/Roaming/MetaQuotes/Terminal/Common/Files/alphalyceum_signals.jsonl",
+  "state_file": "D:/alphalyceum/phase1/logs/state.json",
+  "telegram": {
+    "bot_token": "PUT_TELEGRAM_BOT_TOKEN_HERE",
+    "chat_id": "@alphalyceum"
+  },
+  "filters": {
+    "allowed_symbol": "XAUUSD",
+    "allowed_tf": "PERIOD_M15"
+  }
+}

@@ -1,0 +1,3 @@
+Auto-generated backtest grid runs for Mode1 M5.
+Params varied: FastMALength {10,20}; RSIFastLength {5,7,9}; ATRStopMult {2.0,2.3}; RR=3; SlowMAFilter=false.
+Period: M5; Date: 2025.11.01-2026.02.14; Deposit 10000.

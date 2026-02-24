@@ -1,0 +1,11 @@
+run_id,InpSymbol,InpTF,InpEMAPeriod,InpRSIPeriod,InpRSILow,InpRSIHigh,InpADXPeriod,InpADXMin,InpSwingLookback,InpRR,InpUseCommonFile,InpShowIndicators,InpShowStatusPanel,InpUseSessionFilter,InpSessionStartHour,InpSessionEndHour,InpATRPeriod,InpMinATRPoints,InpMaxSpreadPoints,InpEnableBacktestExecution,InpUseCompoundingRisk,InpRiskPercent,InpBacktestLot,InpMinLot,InpMaxLot,InpOnePositionOnly
+v4_001,BTCUSD.vx,15,50,3,15,85,5,30,5,2.0,false,false,false,true,12,23,14,120,140,true,true,0.5,0.1,0.01,2.0,true
+v4_002,BTCUSD.vx,15,50,3,15,85,5,30,5,2.0,false,false,false,true,12,23,14,150,120,true,true,0.5,0.1,0.01,2.0,true
+v4_003,BTCUSD.vx,15,50,3,20,80,5,30,5,2.0,false,false,false,true,12,23,14,120,140,true,true,0.5,0.1,0.01,2.0,true
+v4_004,BTCUSD.vx,15,50,3,20,80,5,30,5,2.0,false,false,false,true,12,23,14,150,120,true,true,0.5,0.1,0.01,2.0,true
+v4_005,BTCUSD.vx,15,50,3,15,85,5,30,5,3.0,false,false,false,true,12,23,14,120,140,true,true,0.5,0.1,0.01,2.0,true
+v4_006,BTCUSD.vx,15,50,3,15,85,5,30,5,3.0,false,false,false,true,12,23,14,150,120,true,true,0.5,0.1,0.01,2.0,true
+v4_007,BTCUSD.vx,15,50,3,15,85,5,25,5,2.0,false,false,false,true,12,23,14,120,140,true,true,0.5,0.1,0.01,2.0,true
+v4_008,BTCUSD.vx,15,50,3,15,85,5,35,5,2.0,false,false,false,true,12,23,14,120,140,true,true,0.5,0.1,0.01,2.0,true
+v4_009,BTCUSD.vx,15,50,3,15,85,5,30,5,2.0,false,false,false,true,10,23,14,120,140,true,true,0.5,0.1,0.01,2.0,true
+v4_010,BTCUSD.vx,15,50,3,15,85,5,30,5,2.0,false,false,false,true,13,23,14,120,140,true,true,0.5,0.1,0.01,2.0,true

@@ -1,0 +1,13 @@
+variant,adx_min,rsi_low,rsi_high,rr,risk_pct,notes
+V3,25,15,85,2.0,0.5,strict_rr_compounding
+V3,25,20,80,2.0,0.5,strict_rr_compounding
+V3,30,15,85,2.0,0.5,strict_rr_compounding
+V3,30,20,80,2.0,0.5,strict_rr_compounding
+V3,35,15,85,2.0,0.5,strict_rr_compounding
+V3,35,20,80,2.0,0.5,strict_rr_compounding
+V3,25,15,85,3.0,0.5,strict_rr_compounding
+V3,30,15,85,3.0,0.5,strict_rr_compounding
+V3,35,15,85,3.0,0.5,strict_rr_compounding
+V3,25,20,80,2.0,1.0,strict_rr_compounding
+V3,30,20,80,2.0,1.0,strict_rr_compounding
+V3,35,20,80,2.0,1.0,strict_rr_compounding

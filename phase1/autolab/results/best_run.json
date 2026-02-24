@@ -1,0 +1,13 @@
+{
+  "run_id": "v3_run1_adx30_rsi1585_rr2_risk05",
+  "net_profit": -168.32,
+  "profit_factor": 0.81,
+  "expected_payoff": -6.47,
+  "total_trades": 26.0,
+  "balance_dd_rel_pct": 3.24,
+  "equity_dd_rel_pct": 3.26,
+  "short_win_pct": 33.33,
+  "long_win_pct": 27.27,
+  "win_avg_pct": 30.3,
+  "score": 41.678
+}

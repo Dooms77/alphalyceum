@@ -1,0 +1,16 @@
+﻿run_id,variant,adx_min,rsi_low,rsi_high,rr,sl_mode,atr_mult,session_filter,net_profit,profit_factor,max_drawdown_pct,trades,oos_ratio,notes
+run_001,V2A,25,20,80,2.0,SWING,0,EU_NY,0,0,0,0,0,pending_parse
+run_002,V2A,25,20,80,3.0,SWING,0,EU_NY,0,0,0,0,0,pending_parse
+run_003,V2A,30,20,80,2.0,SWING,0,EU_NY,0,0,0,0,0,pending_parse
+run_004,V2A,30,20,80,3.0,SWING,0,EU_NY,0,0,0,0,0,pending_parse
+run_005,V2A,35,20,80,2.0,SWING,0,EU_NY,0,0,0,0,0,pending_parse
+run_006,V2A,35,20,80,3.0,SWING,0,EU_NY,0,0,0,0,0,pending_parse
+run_007,V2A,25,15,85,2.0,ATR,1.2,EU_NY,0,0,0,0,0,pending_parse
+run_008,V2A,30,15,85,2.0,ATR,1.5,EU_NY,0,0,0,0,0,pending_parse
+run_009,V2A,35,15,85,2.0,ATR,1.5,EU_NY,0,0,0,0,0,pending_parse
+run_010,V2B,25,20,80,1.5,SWING,0,ALLDAY,0,0,0,0,0,pending_parse
+run_011,V2B,30,20,80,1.5,SWING,0,ALLDAY,0,0,0,0,0,pending_parse
+run_012,V2B,35,20,80,1.5,SWING,0,ALLDAY,0,0,0,0,0,pending_parse
+run_013,V2B,25,15,85,1.5,ATR,1.2,ALLDAY,0,0,0,0,0,pending_parse
+run_014,V2B,30,15,85,1.5,ATR,1.5,ALLDAY,0,0,0,0,0,pending_parse
+run_015,V2B,35,15,85,1.5,ATR,1.5,ALLDAY,0,0,0,0,0,pending_parse

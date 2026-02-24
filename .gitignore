@@ -19,3 +19,11 @@ venv/
 
 # secrets
 /config/oauth_project.json
+/phase1/config/config.json
+
+# phase1 runtime artifacts
+/phase1/logs/
+/phase1/**/__pycache__/
+/phase1/**/*.pyc
+/phase1/backtest/reports/
+/phase1/autolab/reports/

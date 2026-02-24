@@ -1,0 +1,5 @@
+run_id,net_profit,profit_factor,expected_payoff,total_trades,balance_dd_rel_pct,equity_dd_rel_pct,short_win_pct,long_win_pct
+ReportTester-193886584,-1136.91,0.84,-5.77,197.0,17.81,18.65,27.1,33.33
+run_adx30,-993.39,0.85,-5.23,190.0,16.87,17.4,26.47,32.95
+run_adx35,-1197.75,0.82,-6.44,186.0,18.89,19.43,26.0,32.56
+v3_run1_adx30_rsi1585_rr2_risk05,-168.32,0.81,-6.47,26.0,3.24,3.26,33.33,27.27

@@ -1,0 +1,19 @@
+{
+  "terminal_path": "C:/Program Files/MetaTrader 5/terminal64.exe",
+  "expert_name": "Advisors\\AlphaLyceumSignalEA.ex5",
+  "symbol": "BTCUSD.vx",
+  "period": "M15",
+  "from_date": "2021.01.01",
+  "to_date": "2026.02.14",
+  "deposit": "10000",
+  "currency": "USD",
+  "leverage": "1:100",
+  "model": 1,
+  "execution_mode": 28,
+  "replace_report": 1,
+  "shutdown_terminal": 1,
+  "visual": 0,
+  "reports_dir": "D:/alphalyceum/phase1/autolab/reports",
+  "results_dir": "D:/alphalyceum/phase1/autolab/results",
+  "grid_file": "D:/alphalyceum/phase1/autolab/grids/v5_m15_recalib_36.csv"
+}

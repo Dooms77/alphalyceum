@@ -1,48 +1,66 @@
-# AlphaLyceum V2 (Signal + Insight Engine)
+# AlphaLyceum Monorepo (Bot V1 + Bot V2)
 
-## Objective
-Build Bot V2 for **swing + intraday insights** with:
-- TradingView chart context
-- News context
-- Structured Telegram output
+Repository ini sekarang menyatukan 2 engine utama AlphaLyceum supaya tracking fitur, commit history, dan rollback lebih rapi.
 
-## Scope v0.1
-1. Ingest chart context (placeholder adapter)
-2. Ingest news context (placeholder adapter)
-3. Build unified analysis payload
-4. Generate Telegram message format (insight-oriented)
+## Struktur
 
-## Runtime flow
-1. `tradingview_ingest.py` -> chart snapshot/context payload
-2. `news_ingest.py` -> macro/news payload
-3. `v2_signal_router.py` merges + scores bias
-4. `message_formatter.py` formats final Telegram post
+- `phase1/` → **Bot V1 (scalping M5, MT5 -> watcher -> Telegram)**
+- `python/` + `config/` + `data/` → **Bot V2 (swing/intraday insight engine)**
 
-## Next integration
-- Plug real TradingView source/API
-- Plug real news source/API
-- Add scheduler (every X minutes)
-- Add Telegram publisher binding
+## Tujuan Tiap Bot
 
-## GPT Codex OAuth Fallback (project-local account)
-V2 default tetap pakai Ollama (`deepseek-r1:14b`).
-Jika output Ollama kosong/timeout, bot fallback ke GPT Codex via OAuth **khusus project V2**
-(tanpa pakai auth profile OpenClaw utama).
+### Bot V1 (`phase1/`)
+Fokus eksekusi sinyal real-time dari MT5 ke Telegram:
+- watcher signal file
+- alert & health checks
+- scripts watchdog/smoke/rotation
+- toolkit backtest/autolab
 
-### Setup akun OAuth terpisah untuk V2
-1. Jalankan login helper:
+### Bot V2 (root repo)
+Fokus analisa insight berkualitas dengan gate ketat:
+- chart context + news context
+- policy status: `OK / HOLD_NEWS / NO-TRADE`
+- pair cooldown 3 jam
+- quality gate min score 75
+- formatter output Telegram yang terstruktur
+
+## Quick Start
+
+### V2 (current main runner)
 ```powershell
-python D:\alphalyceum\v2\python\oauth_login_project.py
+cd D:\alphalyceum\v2\python
+python run_v2_once.py
 ```
-2. Login pakai akun GPT yang ingin dipakai khusus V2.
-3. Paste callback URL saat diminta.
-4. Token disimpan di:
-`D:/alphalyceum/v2/config/oauth_project.json`
 
-Config: `v2/config/v2_config.json` -> `analysis.openai_oauth`
-- `enabled`: aktifkan fallback OAuth
-- `credentials_file`: lokasi token OAuth project
-- `model`: target model fallback (`gpt-5-codex`)
-- `token_url`, `client_id`, `scope`: parameter OAuth
+### V1 (legacy/stable signal pipeline)
+Lihat dokumentasi detail di:
+- `phase1/README.md`
+- `phase1/python/run_phase1.py`
 
-Catatan: ini flow OAuth project-local, jadi tidak mengubah konfigurasi OpenClaw global.
+## Security & Secrets
+
+File sensitif/runtimes sudah di-ignore via `.gitignore`, termasuk:
+- `config/oauth_project.json`
+- `phase1/config/config.json`
+- `phase1/logs/`
+- generated charts/reports/cache
+
+Gunakan file example/template untuk konfigurasi sebelum run di mesin baru.
+
+## Branching & Commit Convention (recommended)
+
+- `main` → stable branch
+- `feature/<scope>-<short-name>` → fitur baru
+- `fix/<scope>-<short-name>` → bugfix
+
+Commit style:
+- `feat(v2): tambah news gating high-impact`
+- `fix(v1): stabilkan watcher restart loop`
+- `chore(repo): update readme monorepo`
+
+## Roadmap Ringkas
+
+1. Stabilkan publish policy V2 di kondisi live session
+2. Hardening adapter ForexFactory + TradingView
+3. Integrasi evaluasi performa silang V1/V2
+4. Dashboard ringkas untuk audit sinyal dan quality score

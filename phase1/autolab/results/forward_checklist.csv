@@ -1,0 +1,2 @@
+period,start_date,end_date,pair,timeframe,rr_target,trades,max_dd_pct,profit_factor,winrate_pct,expectancy_r,telegram_fail_pct,critical_bugs,notes
+forward_14d,2026-02-15,2026-03-01,BTCUSD.vx,M15,3.0,,,,,,,0,Forward locked to V4_006 (RR3 RSI15/85 ADX30 session12-23 ATR150 spread120 risk0.5%)
