@@ -170,7 +170,7 @@ def _enforce_pair_specific(payload: dict):
     risk = str(news.get("risk_level", "medium")).lower()
     if isinstance(plan.get("conviction"), (int, float)):
         if risk == "high":
-            plan["conviction"] = max(35, int(plan.get("conviction", 58)) - 8)
+            plan["conviction"] = max(40, int(plan.get("conviction", 58)) - 4)
         elif risk == "low":
             plan["conviction"] = min(85, int(plan.get("conviction", 58)) + 4)
 
@@ -255,7 +255,7 @@ def _compute_status(payload: dict, quality: int, cfg: dict, news_blocked: bool, 
             not _is_placeholder(plan.get("tp_zone", "")),
             not _is_placeholder(plan.get("sl_zone", "")),
         ])
-        if conv >= 60 and setup_ready and quality >= max(65, min_quality - 4):
+        if conv >= 50 and setup_ready and quality >= max(60, min_quality - 4):
             bias = "mixed"
             payload["bias"] = "mixed"
 

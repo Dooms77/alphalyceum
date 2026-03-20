@@ -62,7 +62,7 @@
       "pair_cooldown_hours": { "BTCUSD.vx": 4, "XAUUSD.vx": 4 }
     },
     "balanced": {
-      "min_quality_score": 69,
+      "min_quality_score": 59,
       "pair_cooldown_hours": { "BTCUSD.vx": 3, "XAUUSD.vx": 3 }
     },
     "aggressive": {
