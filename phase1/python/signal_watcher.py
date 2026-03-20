@@ -5,7 +5,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
-from telegram_publisher import format_signal_message, send_telegram_message
+from telegram_publisher import (
+    format_signal_message,
+    format_signal_result_message,
+    send_telegram_message,
+)
 
 
 def _ts() -> str:
@@ -23,9 +27,12 @@ def load_config(config_path: str) -> dict:
 
 def load_state(state_file: str) -> dict:
     if not os.path.exists(state_file):
-        return {"offset": 0, "sent_ids": []}
+        return {"offset": 0, "sent_ids": [], "active_signals": {}, "closed_results": {}}
     with open(state_file, "r", encoding="utf-8") as f:
-        return json.load(f)
+        state = json.load(f)
+    state.setdefault("active_signals", {})
+    state.setdefault("closed_results", {})
+    return state
 
 
 def save_state(state_file: str, state: dict) -> None:
@@ -39,6 +46,115 @@ def _safe_id(signal: Dict[str, Any]) -> str:
     if sid is None:
         return ""
     return str(sid)
+
+
+def _to_float(v: Any) -> float | None:
+    try:
+        if v is None or v == "":
+            return None
+        return float(v)
+    except Exception:
+        return None
+
+
+def _load_price_map(price_file: str) -> Dict[str, Dict[str, Any]]:
+    if not price_file or (not os.path.exists(price_file)):
+        return {}
+
+    # Supports:
+    # 1) JSON object map: {"XAUUSD.vx": {"price": 4688.0, "time": "..."}, ...}
+    # 2) JSONL rows: {"pair":"XAUUSD.vx","price":4688.0,"time":"..."}
+    try:
+        with open(price_file, "r", encoding="utf-8") as f:
+            raw = f.read().strip()
+        if not raw:
+            return {}
+
+        if raw.startswith("{"):
+            obj = json.loads(raw)
+            out = {}
+            for k, v in (obj or {}).items():
+                if isinstance(v, dict):
+                    price = _to_float(v.get("price") or v.get("bid") or v.get("last"))
+                    if price is not None:
+                        out[str(k)] = {
+                            "price": price,
+                            "time": str(v.get("time") or v.get("ts") or _ts()),
+                        }
+                else:
+                    price = _to_float(v)
+                    if price is not None:
+                        out[str(k)] = {"price": price, "time": _ts()}
+            return out
+
+        out = {}
+        for ln in raw.splitlines()[-200:]:
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                row = json.loads(ln)
+            except Exception:
+                continue
+            pair = str(row.get("pair") or row.get("symbol") or "").strip()
+            if not pair:
+                continue
+            price = _to_float(row.get("price") or row.get("bid") or row.get("last"))
+            if price is None:
+                continue
+            out[pair] = {
+                "price": price,
+                "time": str(row.get("time") or row.get("ts") or _ts()),
+            }
+        return out
+    except Exception:
+        return {}
+
+
+def _signal_duration_min(signal: Dict[str, Any], hit_time: str) -> float | None:
+    st = str(signal.get("signal_time") or "").strip()
+    if not st:
+        return None
+    fmt_candidates = ["%Y.%m.%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S"]
+    sdt = None
+    hdt = None
+    for f in fmt_candidates:
+        try:
+            sdt = datetime.strptime(st, f)
+            break
+        except Exception:
+            continue
+    for f in fmt_candidates:
+        try:
+            hdt = datetime.strptime(hit_time, f)
+            break
+        except Exception:
+            continue
+    if not sdt or not hdt:
+        return None
+    return max(0.0, (hdt - sdt).total_seconds() / 60.0)
+
+
+def _evaluate_result(signal: Dict[str, Any], price: float) -> str | None:
+    side = str(signal.get("side", "")).upper()
+    tp = _to_float(signal.get("tp"))
+    sl = _to_float(signal.get("sl"))
+    if tp is None or sl is None:
+        return None
+
+    # conservative order: for BUY check SL then TP, for SELL check SL then TP
+    # to avoid over-claiming TP in violent move bars.
+    if side == "BUY":
+        if price <= sl:
+            return "SL_HIT"
+        if price >= tp:
+            return "TP_HIT"
+    elif side == "SELL":
+        if price >= sl:
+            return "SL_HIT"
+        if price <= tp:
+            return "TP_HIT"
+    return None
 
 
 def run_once(config_path: str = "../config/config.json") -> None:
@@ -64,8 +180,15 @@ def run_once(config_path: str = "../config/config.json") -> None:
         offset = 0
 
     sent_ids = set(str(x) for x in state.get("sent_ids", []))
+    active_signals: Dict[str, Dict[str, Any]] = dict(state.get("active_signals", {}))
+    closed_results: Dict[str, Dict[str, Any]] = dict(state.get("closed_results", {}))
+
     max_per_run = int(cfg.get("runtime", {}).get("max_messages_per_run", 3))
     sleep_between = float(cfg.get("runtime", {}).get("sleep_between_sends_sec", 1.2))
+
+    monitor_cfg = cfg.get("monitoring", {})
+    monitoring_enabled = bool(monitor_cfg.get("enabled", True))
+    price_file = str(monitor_cfg.get("price_file", "")).strip()
 
     filters = cfg.get("filters", {})
     allowed_tf = filters["allowed_tf"]
@@ -136,6 +259,19 @@ def run_once(config_path: str = "../config/config.json") -> None:
 
             if sid:
                 sent_ids.add(sid)
+                # Start lifecycle tracking for TP/SL updates
+                active_signals[sid] = {
+                    "id": sid,
+                    "pair": s.get("pair"),
+                    "tf": s.get("tf"),
+                    "side": s.get("side"),
+                    "entry": s.get("entry"),
+                    "sl": s.get("sl"),
+                    "tp": s.get("tp"),
+                    "signal_time": s.get("signal_time") or s.get("time") or _ts(),
+                    "opened_at": _ts(),
+                    "status": "OPEN",
+                }
             sent_count += 1
             new_offset = f.tell()
             log(f"Sent signal id={sid or '-'} pair={s.get('pair')} tf={s.get('tf')} side={s.get('side')}")
@@ -143,14 +279,67 @@ def run_once(config_path: str = "../config/config.json") -> None:
             if sent_count < max_per_run:
                 time.sleep(sleep_between)
 
+    # Evaluate active signals against latest MT5 prices and send TP/SL updates.
+    lifecycle_updates = 0
+    if monitoring_enabled and active_signals:
+        price_map = _load_price_map(price_file)
+        if not price_map:
+            log(f"Monitoring enabled but no price map loaded (price_file='{price_file}')")
+        else:
+            for sid, sig in list(active_signals.items()):
+                pair = str(sig.get("pair") or "")
+                px = _to_float((price_map.get(pair) or {}).get("price"))
+                hit_time = str((price_map.get(pair) or {}).get("time") or _ts())
+                if px is None:
+                    continue
+
+                result = _evaluate_result(sig, px)
+                if not result:
+                    continue
+
+                # avoid duplicate closure posts
+                if sid in closed_results:
+                    active_signals.pop(sid, None)
+                    continue
+
+                duration_min = _signal_duration_min(sig, hit_time)
+                msg = format_signal_result_message(sig, result=result, hit_price=px, hit_time=hit_time, duration_min=duration_min)
+                try:
+                    send_telegram_message(cfg["telegram"]["bot_token"], cfg["telegram"]["chat_id"], msg)
+                except Exception as e:
+                    log(f"Result send failed for id={sid}: {e}")
+                    continue
+
+                closed_results[sid] = {
+                    "id": sid,
+                    "result": result,
+                    "hit_price": px,
+                    "hit_time": hit_time,
+                    "duration_min": duration_min,
+                    "closed_at": _ts(),
+                }
+                active_signals.pop(sid, None)
+                lifecycle_updates += 1
+                log(f"Closed signal id={sid} result={result} pair={pair} price={px}")
+
     # Keep recent IDs in stable order.
     sent_ids_tail = sorted(sent_ids)[-2000:]
+    # Keep closed results bounded.
+    if len(closed_results) > 4000:
+        # approximate trim by key sort
+        for k in sorted(closed_results.keys())[:-3000]:
+            closed_results.pop(k, None)
+
     state["offset"] = new_offset
     state["sent_ids"] = sent_ids_tail
+    state["active_signals"] = active_signals
+    state["closed_results"] = closed_results
     state["last_run_at"] = _ts()
     state["last_run_stats"] = {
         "scanned_lines": scanned_lines,
         "sent_count": sent_count,
+        "lifecycle_updates": lifecycle_updates,
+        "active_open": len(active_signals),
         "offset_before": offset,
         "offset_after": new_offset,
         "file_size": file_size,

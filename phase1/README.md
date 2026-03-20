@@ -8,7 +8,7 @@
 
 ## Struktur
 - `mt5/AlphaLyceumSignalEA.mq5` -> EA sinyal
-- `python/signal_watcher.py` -> baca sinyal baru & kirim Telegram
+- `python/signal_watcher.py` -> baca sinyal baru, kirim Telegram, dan update hasil TP/SL
 - `python/run_phase1.py` -> runner sekali atau loop 60 detik
 - `python/news_fetcher.py` -> fetch kalender high-impact (opsional fase 1.5)
 - `config/config.example.json` -> template config
@@ -70,6 +70,28 @@ powershell -ExecutionPolicy Bypass -File .\watcher_watchdog.ps1 -Config ..\confi
 powershell -ExecutionPolicy Bypass -File .\rotate_watcher_logs.ps1 -WhatIf
 powershell -ExecutionPolicy Bypass -File .\smoke_check.ps1 -Config ..\config\config.json
 ```
+
+## Monitoring hasil TP/SL (baru)
+Watcher sekarang bisa kirim update hasil signal (TP HIT / SL HIT) jika file harga realtime tersedia.
+
+Tambahkan di `config/config.json`:
+- `monitoring.enabled`
+- `monitoring.price_file`
+
+Format `price_file` yang didukung:
+1) JSON map
+```json
+{
+  "XAUUSD.vx": {"price": 4688.10, "time": "2026-03-20 09:10:00"},
+  "BTCUSD.vx": {"price": 70450.00, "time": "2026-03-20 09:10:00"}
+}
+```
+2) JSONL tick rows (last row per pair dipakai)
+```json
+{"pair":"XAUUSD.vx","price":4688.10,"time":"2026-03-20 09:10:00"}
+```
+
+Tanpa `price_file` valid, watcher tetap kirim signal awal, tapi tidak bisa menutup hasil TP/SL.
 
 ## Catatan
 - Ini fase 1 untuk validasi signal di akun dummy

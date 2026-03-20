@@ -143,3 +143,32 @@ def format_signal_message(signal: Dict[str, Any]) -> str:
         f"ID: <code>{signal_id}</code>\n\n"
         "<i>Disclaimer: edukasi, bukan financial advice. Selalu pakai risk management.</i>"
     )
+
+
+def format_signal_result_message(signal: Dict[str, Any], result: str, hit_price: Any, hit_time: str, duration_min: float | None = None) -> str:
+    pair = html.escape(str(signal.get("pair", "-")))
+    tf = html.escape(str(signal.get("tf", "-")).replace("PERIOD_", ""))
+    side = html.escape(str(signal.get("side", "-")).upper())
+    signal_id = html.escape(str(signal.get("id", "-")))
+
+    entry = _fmt_num(signal.get("entry"), digits=2)
+    sl = _fmt_num(signal.get("sl"), digits=2)
+    tp = _fmt_num(signal.get("tp"), digits=2)
+    hit = _fmt_num(hit_price, digits=2)
+
+    icon = "✅" if str(result).upper() == "TP_HIT" else "🛑" if str(result).upper() == "SL_HIT" else "ℹ️"
+    result_txt = "TP HIT" if str(result).upper() == "TP_HIT" else "SL HIT" if str(result).upper() == "SL_HIT" else html.escape(str(result))
+
+    dur = f"{duration_min:.1f} menit" if isinstance(duration_min, (int, float)) else "-"
+
+    return (
+        f"{icon} <b>UPDATE HASIL SIGNAL</b>\n"
+        f"Pair: <b>{pair}</b> ({tf})\n"
+        f"Arah: <b>{side}</b>\n"
+        f"Hasil: <b>{result_txt}</b>\n"
+        f"Harga Hit: <b>{hit}</b>\n"
+        f"Entry: {entry} | SL: {sl} | TP: {tp}\n"
+        f"Waktu Hit: {html.escape(hit_time)}\n"
+        f"Durasi: {dur}\n"
+        f"ID: <code>{signal_id}</code>"
+    )
