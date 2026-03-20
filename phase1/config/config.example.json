@@ -1,12 +1,21 @@
 {
-  "signal_file": "C:/Users/AORUS/AppData/Roaming/MetaQuotes/Terminal/Common/Files/alphalyceum_signals.jsonl",
+  "signal_file": "C:/Users/AORUS/AppData/Roaming/MetaQuotes/Terminal/Common/Files/alphalyceum_signals_live_m5.jsonl",
   "state_file": "D:/alphalyceum/phase1/logs/state.json",
   "telegram": {
+    "purpose": "alphalyceum_trading_only",
     "bot_token": "PUT_TELEGRAM_BOT_TOKEN_HERE",
     "chat_id": "@alphalyceum"
   },
   "filters": {
-    "allowed_symbol": "XAUUSD",
-    "allowed_tf": "PERIOD_M15"
+    "allowed_symbols": ["BTCUSD.vx", "XAUUSD.vx"],
+    "allowed_tf": "PERIOD_M5"
+  },
+  "runtime": {
+    "max_messages_per_run": 2,
+    "sleep_between_sends_sec": 1.5
+  },
+  "monitoring": {
+    "enabled": true,
+    "price_file": "C:/Users/AORUS/AppData/Roaming/MetaQuotes/Terminal/Common/Files/alphalyceum_prices_live_m5.jsonl"
   }
 }

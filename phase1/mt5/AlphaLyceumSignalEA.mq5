@@ -17,6 +17,7 @@ input int InpSwingLookback        = 5;
 input double InpRR                = 3.0;
 input bool InpUseCommonFile       = true;
 input string InpOutFile           = "alphalyceum_signals.jsonl";
+input string InpPriceOutFile      = "alphalyceum_prices_live_m5.jsonl"; // realtime price feed for watcher TP/SL monitor
 
 // Debug / diagnostics
 input bool InpDebugMode           = false; // prints condition states on each new bar
@@ -118,6 +119,8 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
+   PublishRealtimePrice();
+
    datetime barTime = iTime(tradeSymbol, InpTF, 0);
    if(barTime == 0)
       return;
@@ -421,6 +424,40 @@ double CalculateLotByRisk(double entry, double sl)
 }
 
 //+------------------------------------------------------------------+
+void PublishRealtimePrice()
+{
+   if(StringLen(InpPriceOutFile) == 0)
+      return;
+
+   double bid = SymbolInfoDouble(tradeSymbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(tradeSymbol, SYMBOL_ASK);
+   double last = SymbolInfoDouble(tradeSymbol, SYMBOL_LAST);
+   if(last <= 0.0) last = bid;
+
+   int digits = (int)SymbolInfoInteger(tradeSymbol, SYMBOL_DIGITS);
+   string t = TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES|TIME_SECONDS);
+
+   string row = StringFormat(
+      "{\"pair\":\"%s\",\"price\":%.*f,\"bid\":%.*f,\"ask\":%.*f,\"time\":\"%s\"}",
+      tradeSymbol,
+      digits, last,
+      digits, bid,
+      digits, ask,
+      t
+   );
+
+   int flags = FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_READ;
+   if(InpUseCommonFile) flags |= FILE_COMMON;
+
+   int h = FileOpen(InpPriceOutFile, flags);
+   if(h == INVALID_HANDLE)
+      return;
+
+   FileSeek(h, 0, SEEK_END);
+   FileWriteString(h, row + "\n");
+   FileClose(h);
+}
+
 void WriteSignal(string payload)
 {
    int flags = FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_READ;
