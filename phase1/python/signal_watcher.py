@@ -71,21 +71,26 @@ def _load_price_map(price_file: str) -> Dict[str, Dict[str, Any]]:
             return {}
 
         if raw.startswith("{"):
-            obj = json.loads(raw)
-            out = {}
-            for k, v in (obj or {}).items():
-                if isinstance(v, dict):
-                    price = _to_float(v.get("price") or v.get("bid") or v.get("last"))
-                    if price is not None:
-                        out[str(k)] = {
-                            "price": price,
-                            "time": str(v.get("time") or v.get("ts") or _ts()),
-                        }
-                else:
-                    price = _to_float(v)
-                    if price is not None:
-                        out[str(k)] = {"price": price, "time": _ts()}
-            return out
+            try:
+                obj = json.loads(raw)
+                out = {}
+                for k, v in (obj or {}).items():
+                    if isinstance(v, dict):
+                        price = _to_float(v.get("price") or v.get("bid") or v.get("last"))
+                        if price is not None:
+                            out[str(k)] = {
+                                "price": price,
+                                "time": str(v.get("time") or v.get("ts") or _ts()),
+                            }
+                    else:
+                        price = _to_float(v)
+                        if price is not None:
+                            out[str(k)] = {"price": price, "time": _ts()}
+                if out:
+                    return out
+            except Exception:
+                # if not a single JSON object, fall through to JSONL parsing
+                pass
 
         out = {}
         for ln in raw.splitlines()[-200:]:
@@ -157,6 +162,60 @@ def _evaluate_result(signal: Dict[str, Any], price: float) -> str | None:
     return None
 
 
+def _load_recent_signals(signal_file: str, limit: int = 200) -> list[Dict[str, Any]]:
+    if not os.path.exists(signal_file):
+        return []
+    out = []
+    try:
+        with open(signal_file, "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+        for ln in lines[-limit:]:
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                out.append(json.loads(ln))
+            except Exception:
+                continue
+    except Exception:
+        return []
+    return out
+
+
+def _bootstrap_active_signals_from_history(signal_file: str, sent_ids: set[str], active_signals: Dict[str, Dict[str, Any]], closed_results: Dict[str, Dict[str, Any]], max_bootstrap: int = 2) -> int:
+    if active_signals:
+        return 0
+    # only bootstrap a small tail to avoid blasting old history results
+    recent = _load_recent_signals(signal_file, limit=80)
+    added = 0
+    for s in reversed(recent):
+        sid = _safe_id(s)
+        if not sid:
+            continue
+        if sid not in sent_ids:
+            continue
+        if sid in closed_results:
+            continue
+        if sid in active_signals:
+            continue
+        active_signals[sid] = {
+            "id": sid,
+            "pair": s.get("pair"),
+            "tf": s.get("tf"),
+            "side": s.get("side"),
+            "entry": s.get("entry"),
+            "sl": s.get("sl"),
+            "tp": s.get("tp"),
+            "signal_time": s.get("signal_time") or s.get("time") or _ts(),
+            "opened_at": _ts(),
+            "status": "OPEN",
+        }
+        added += 1
+        if added >= max_bootstrap:
+            break
+    return added
+
+
 def run_once(config_path: str = "../config/config.json") -> None:
     cfg = load_config(config_path)
 
@@ -200,6 +259,11 @@ def run_once(config_path: str = "../config/config.json") -> None:
         allowed_symbols = {str(x) for x in filters.get("allowed_symbols", []) if str(x).strip()}
     if not allowed_symbols and filters.get("allowed_symbol"):
         allowed_symbols = {str(filters.get("allowed_symbol"))}
+
+    # Bootstrap tracker for previously-sent signals (before lifecycle feature existed)
+    boot_added = _bootstrap_active_signals_from_history(signal_file, sent_ids, active_signals, closed_results)
+    if boot_added > 0:
+        log(f"Bootstrapped active signals from history: {boot_added}")
 
     sent_count = 0
     scanned_lines = 0
@@ -338,6 +402,7 @@ def run_once(config_path: str = "../config/config.json") -> None:
     state["last_run_stats"] = {
         "scanned_lines": scanned_lines,
         "sent_count": sent_count,
+        "bootstrapped_active": boot_added,
         "lifecycle_updates": lifecycle_updates,
         "active_open": len(active_signals),
         "offset_before": offset,
