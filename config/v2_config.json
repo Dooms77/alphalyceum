@@ -47,7 +47,7 @@
   },
   "publish_policy": {
     "min_interval_hours": 3,
-    "require_session_window": true,
+    "require_session_window": false,
     "min_quality_score": 75,
     "forbid_neutral_bias": true,
     "pair_cooldown_hours": {
